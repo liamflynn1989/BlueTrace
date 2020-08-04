@@ -21,10 +21,14 @@ with open("credentials.txt") as f:
     lines = [line.rstrip().split() for line in f]
     
 credentials = {key:value for [key,value] in lines}
- 
+
+
 
 #TempID
 def generate_TempID(user):
+    
+    
+    #this should do a check if the current TempID is still valid
     
     # printing digits
     letters = string.digits
@@ -48,8 +52,7 @@ def generate_TempID(user):
  
 #Block User after 3 attempts
 def block(user):
-    now = datetime.now()
-    now_str = now.strftime("%d/%m/%Y %H:%M:%S")
+    exp = int(datetime.now().timestamp()) + block_duration
     with open('blocked.txt', 'a+') as file_object:
         # Move read cursor to the start of file.
         file_object.seek(0)
@@ -58,33 +61,40 @@ def block(user):
         if len(data) > 0 :
             file_object.write("\n")
         
-        file_object.write(' '.join([user,now_str]))
+        file_object.write(' '.join([user,str(exp)]))
 
-    
+def get_blocked():
+    #Read currently blocked users
+    with open("blocked.txt") as f:
+        lines = [line.rstrip().split() for line in f]
+        
+    blocked = {key:value for [key,value] in lines}
+
+    return blocked    
 
 
 # thread function 
-def sign_in(c): 
+def manage_client(c): 
     
-    #Login Phase
-    msg = "Please input username"
-    c.send(msg.encode('ascii')) 
     # data received from client 
     user = str(c.recv(1024).decode('ascii'))
-    
-    msg = "Please input password"
-    c.send(msg.encode('ascii')) 
     passw = str(c.recv(1024).decode('ascii'))
     
     wrong_pass_count = 0
     
+    blocked = get_blocked()
+    
+    if user in blocked and int(blocked[user]) > int(datetime.now().timestamp()):
+        msg = "Your account is blocked due to multiple login failures. Please try again later"
+        c.send(msg.encode('ascii')) 
+    
     while user not in credentials.keys() or credentials[user] != passw:
-        msg = "Incorrect Password"
+        msg = "Invalid Password. Please try again"
         wrong_pass_count += 1
         
         if wrong_pass_count >= 3:
             block(user)
-            msg = "You have been blocked for 3 wrong attempts"
+            msg = "Invalid Password. Your account has been blocked. Please try again later"
             c.send(msg.encode('ascii'))  
             #print_lock.release() 
             c.close()
@@ -94,23 +104,40 @@ def sign_in(c):
             
             c.send(msg.encode('ascii'))     
                 
-            #Login Phase
-            msg = "Please input username"
-            c.send(msg.encode('ascii')) 
             # data received from client 
-            user = str(c.recv(1024).decode('ascii'))
-            
-            msg = "Please input password"
-            c.send(msg.encode('ascii'))
             passw = str(c.recv(1024).decode('ascii'))
                 
-            
+    ##User is logged in        
     msg = "Success"
-    c.send(msg.encode('ascii')) 
-    tempID = generate_TempID(user)
-    #Send TempID to user
-    c.send(tempID.encode('ascii')) 
-    #print_lock.release() 
+    c.send(msg.encode('ascii'))
+    
+    while True:
+        
+        user_choice = str(c.recv(1024).decode('ascii'))
+        
+        if user_choice == 'logout':
+            return
+        elif user_choice == "Download_tempID":
+            tempID = generate_TempID(user)
+            print("TempID:")
+            print(tempID)
+            c.send(tempID.encode('ascii')) 
+        elif user_choice == "Upload_contact_log":
+            ans = 'okay'
+            c.send(ans.encode('ascii')) 
+        
+        
+        
+        
+        
+        
+       
+        
+        
+        
+        #Send TempID to user
+        c.send(tempID.encode('ascii')) 
+  
     c.close() 
    
 
@@ -137,7 +164,7 @@ def Main():
         print('Connected to :', addr[0], ':', addr[1]) 
   
         # Start a new thread and return its identifier 
-        start_new_thread(sign_in, (c,)) 
+        start_new_thread(manage_client, (c,)) 
     s.close() 
   
   
