@@ -71,7 +71,7 @@ def Main():
             s.send(ans.encode('ascii')) 
             return
         elif ans == "Download_tempID":
-            print("Downloading TempID")
+            print()
             s.send(ans.encode('ascii')) 
             data = s.recv(1024) 
             print(str(data.decode('ascii')))
@@ -85,7 +85,7 @@ def Main():
         
         print()
         print()
-        print()
+        unused = input("Press enter to return")
 
 
 if __name__ == '__main__': 

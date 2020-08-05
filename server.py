@@ -24,20 +24,17 @@ credentials = {key:value for [key,value] in lines}
 
 
 
-#TempID
-def generate_TempID(user):
-    
-    
-    #this should do a check if the current TempID is still valid
-    
-    # printing digits
-    letters = string.digits
-    tempID = ''.join(random.choice(letters) for i in range(20))
-    now = datetime.now()
-    now_str = now.strftime("%d/%m/%Y %H:%M:%S")
-    exp_str = (now + timedelta(minutes=15)).strftime("%d/%m/%Y %H:%M:%S")
-    ##with open(os.path.join(sys.path[0],'sample.txt'), 'a') as f:
-    with open('sample.txt', 'a+') as file_object:
+def get_tempIDs():
+    #Read currently blocked users
+    with open("tempIDs.txt") as f:
+        lines = [line.rstrip().split() for line in f]
+        
+    tempIDs = {key:[value,exp_date,exp_time] for [key,value,start_data,start_time,exp_date,exp_time] in lines}
+
+    return tempIDs  
+
+def write_tempID_to_DB(user,tempID,now_str,exp_str):
+    with open('tempIDs.txt', 'a+') as file_object:
         # Move read cursor to the start of file.
         file_object.seek(0)
         # If file is not empty then append '\n'
@@ -46,6 +43,30 @@ def generate_TempID(user):
             file_object.write("\n")
         
         file_object.write(' '.join([user,tempID,now_str,exp_str]))
+        
+
+
+#TempID
+def generate_TempID(user):
+    
+    #Check if the current TempID is still valid for the user
+    tempIDs = get_tempIDs()
+    
+    if user in tempIDs:
+        exp_time = datetime.strptime(' '.join(tempIDs[user][1:]),"%d/%m/%Y %H:%M:%S").timestamp()
+        if datetime.now().timestamp() < exp_time:
+            #Valid tempID exists
+            return tempIDs[user][0]
+    
+    #Valid TempID does not exist, so we generate a new one
+    letters = string.digits
+    tempID = ''.join(random.choice(letters) for i in range(20))
+    now = datetime.now()
+    now_str = now.strftime("%d/%m/%Y %H:%M:%S")
+    exp_str = (now + timedelta(minutes=15)).strftime("%d/%m/%Y %H:%M:%S")
+    #Add new tempID to database
+    write_tempID_to_DB(user,tempID,now_str,exp_str)
+
     
     return tempID
 
