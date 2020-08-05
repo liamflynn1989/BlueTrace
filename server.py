@@ -1,7 +1,4 @@
-# import socket programming library 
-import socket 
-  
-# import thread module 
+from socket import *
 from _thread import *
 import threading 
 import sys
@@ -10,7 +7,7 @@ import string
 from datetime import datetime,timedelta
 import os
   
-#print_lock = threading.Lock() 
+
 
 #server_port, block_duration = int(sys.argv[1]),int(sys.argv[2])
 server_port, block_duration = 12345,60
@@ -29,7 +26,7 @@ def get_tempIDs():
     with open("tempIDs.txt") as f:
         lines = [line.rstrip().split() for line in f]
         
-    tempIDs = {key:[value,exp_date,exp_time] for [key,value,start_data,start_time,exp_date,exp_time] in lines}
+    tempIDs = {key:[value,start_date,start_time,exp_date,exp_time] for [key,value,start_date,start_time,exp_date,exp_time] in lines}
 
     return tempIDs  
 
@@ -53,10 +50,10 @@ def generate_TempID(user):
     tempIDs = get_tempIDs()
     
     if user in tempIDs:
-        exp_time = datetime.strptime(' '.join(tempIDs[user][1:]),"%d/%m/%Y %H:%M:%S").timestamp()
+        exp_time = datetime.strptime(' '.join(tempIDs[user][3:]),"%d/%m/%Y %H:%M:%S").timestamp()
         if datetime.now().timestamp() < exp_time:
             #Valid tempID exists
-            return tempIDs[user][0]
+            return ''.join(tempIDs[user])
     
     #Valid TempID does not exist, so we generate a new one
     letters = string.digits
@@ -68,7 +65,7 @@ def generate_TempID(user):
     write_tempID_to_DB(user,tempID,now_str,exp_str)
 
     
-    return tempID
+    return ''.join([tempID,now_str,exp_str])
 
  
 #Block User after 3 attempts
@@ -117,7 +114,6 @@ def manage_client(c):
             block(user)
             msg = "Invalid Password. Your account has been blocked. Please try again later"
             c.send(msg.encode('ascii'))  
-            #print_lock.release() 
             c.close()
             return 
             
@@ -141,33 +137,41 @@ def manage_client(c):
         elif user_choice == "Download_tempID":
             tempID = generate_TempID(user)
             print("TempID:")
-            print(tempID)
+            print(tempID[0:20])
             c.send(tempID.encode('ascii')) 
         elif user_choice == "Upload_contact_log":
             ans = 'okay'
             c.send(ans.encode('ascii')) 
-        
-        
-        
-        
-        
-        
-       
-        
-        
-        
-        #Send TempID to user
-        c.send(tempID.encode('ascii')) 
+
   
     c.close() 
    
+#-------------------------------------------------------------------
 
+def long_send(msg):
+    totalsent = 0
+    while totalsent < MSGLEN:
+        sent = self.sock.send(msg[totalsent:])
+        if sent == 0:
+            raise RuntimeError("socket connection broken")
+        totalsent = totalsent + sent
+
+def long_receive(self):
+    chunks = []
+    bytes_recd = 0
+    while bytes_recd < MSGLEN:
+        chunk = self.sock.recv(min(MSGLEN - bytes_recd, 2048))
+        if chunk == b'':
+            raise RuntimeError("socket connection broken")
+        chunks.append(chunk)
+        bytes_recd = bytes_recd + len(chunk)
+    return b''.join(chunks)
   
-
+#-------------------------------------------------------------------
   
 def Main(): 
     host = "" 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+    s = socket(AF_INET,SOCK_STREAM) 
     s.bind((host, server_port)) 
     print("socket binded to port", server_port) 
   
@@ -181,7 +185,6 @@ def Main():
         # establish connection with client 
         c, addr = s.accept() 
         # lock acquired by client 
-        #print_lock.acquire() 
         print('Connected to :', addr[0], ':', addr[1]) 
   
         # Start a new thread and return its identifier 

@@ -1,8 +1,11 @@
 # Import socket module 
-import socket 
+from socket import *
 import sys
+from _thread import *
+import time
 
-
+#BlueTrace Protocol Version
+version_id = 1
 
 def try_login(s):
 
@@ -20,8 +23,6 @@ def try_login(s):
   
 def retry_login(s):
 
-
-    
     msg = input("Password: ")
     #password sent to server 
     s.send(msg.encode('ascii')) 
@@ -29,14 +30,55 @@ def retry_login(s):
     data = s.recv(1024) 
     print(str(data.decode('ascii')))
     return str(data.decode('ascii'))
-  
+
+    
+
+def periphery_mode(client_udp_port):
+
+
+    clientSocket = socket(AF_INET, SOCK_DGRAM)
+    
+    message = "test msg"
+    
+    #Broadcast Beacon every 5 seconds for 1 minute
+    for i in range(12):
+        clientSocket.sendto(message.encode(),('localhost', client_udp_port))
+        print(message)
+        time.sleep(5)
+        
+    # Close the socket
+    clientSocket.close()
+
+
+def central_mode(client_udp_port):
+
+    s = socket(AF_INET,SOCK_DGRAM) 
+    s.bind(('localhost', client_udp_port)) 
+    print("socket binded to port", client_udp_port) 
+      
+      
+    # a forever loop until client wants to exit 
+    while True: 
+        
+        data = s.recv(1024) 
+        print(str(data.decode('ascii')))
+        ans = input("Do you want to keep listening for beacons? (y/n)")
+        
+        if ans == 'n':
+            s.close()
+            return
+
+
+
+
+
 def Main(): 
     # local host IP '127.0.0.1' 
-    server_IP, server_port, client_udp_port = sys.argv[1],int(sys.argv[2]),sys.argv[3],
+    server_IP, server_port, client_udp_port = sys.argv[1],int(sys.argv[2]),int(sys.argv[3])
 
   
     # Define the port on which you want to connect 
-    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
+    s = socket(AF_INET,SOCK_STREAM) 
   
     # connect to server on local computer 
     s.connect((server_IP,server_port)) 
@@ -62,6 +104,8 @@ def Main():
         print("")
         print("  Download_tempID")
         print("  Upload_contact_log")
+        print("  Central Mode")
+        print("  Peripheral Mode")
         print("  logout")
         print("")
         
@@ -73,19 +117,30 @@ def Main():
         elif ans == "Download_tempID":
             print()
             s.send(ans.encode('ascii')) 
-            data = s.recv(1024) 
-            print(str(data.decode('ascii')))
-            
-            
+            data = s.recv(20+19+19)
+            tempID = str(data.decode('ascii'))
+            print(tempID)
+            print(tempID[0:20])
         elif ans == "Upload_contact_log":
             print("Uploading Contact Log")
-            s.send(ans.encode('ascii')) 
+            s.send(ans.encode('ascii'))
+        elif ans == "Peripheral Mode":
+            #Send Beacons via UDP
+            periphery_mode(client_udp_port)
+
+            
+        elif ans == "Central Mode":
+            #Waiting to recieve beacons
+            central_mode(client_udp_port)
         else:
             print("Sorry I didn't understand your command")
         
         print()
         print()
-        unused = input("Press enter to return")
+        unused = input("Press enter to return to main menu")
+        
+        #Central or Peripheral State
+        
 
 
 if __name__ == '__main__': 

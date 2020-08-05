@@ -5,14 +5,18 @@ from socket import *
 import sys
 
 #Server would be running on the same host as Client
-serverName = sys.argv[1]
-serverPort = int(sys.argv[2])
+#serverName = sys.argv[1]
+#serverPort = int(sys.argv[2])
+serverName = 'localhost'
+serverPort = 12001
+
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 
 message = input("Please type Subscribe\n")
 
 clientSocket.sendto(message.encode(),(serverName, serverPort))
+print("sent")
 #wait for the reply from the server
 receivedMessage, serverAddress = clientSocket.recvfrom(2048)
 
