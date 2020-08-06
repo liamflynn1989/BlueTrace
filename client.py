@@ -121,6 +121,9 @@ class User:
         tempID_start = beacon[21:40]
         tempID_exp = beacon[41:60]
         
+        now = datetime.now()
+        now_str = now.strftime("%d/%m/%Y %H:%M:%S")
+        
         with open(contact_log, 'a+') as file_object:
             # Move read cursor to the start of file.
             file_object.seek(0)
@@ -130,12 +133,32 @@ class User:
                 file_object.write("\n")
             print()
             print(' '.join([tempID,tempID_start,tempID_exp]))
-            file_object.write(' '.join([tempID,tempID_start,tempID_exp]))
+            file_object.write(' '.join([tempID,tempID_start,tempID_exp,now_str]))
         
-    ## This runs at 3 minute intervals to remove
-    ## old beacons
+    ## This runs at 3 minute intervals to remove old beacons
     def remove_old_contacts(self):
-        pass
+        while True:
+            #Run cleanup every 3 minutes
+            time.sleep(180)
+            contact_log = "z5244712_contactlog.txt"
+            
+            with open(contact_log, "r+") as f:
+                # First read the file line by line
+                lines = f.readlines()
+            
+                # Go back at the start of the file
+                f.seek(0)
+                now_time = datetime.now().timestamp()
+                # Filter out and rewrite lines
+                for line in lines:
+                    
+                    contact_time = datetime.strptime(line[-20:].strip(),"%d/%m/%Y %H:%M:%S").timestamp()
+                    if (now_time - contact_time)/60 < 3:
+                    
+                        f.write(line)
+    
+                # Truncate the remaining of the file
+                f.truncate()
         
     def upload_contact_log(self,s):
         msg = '2'
@@ -224,6 +247,7 @@ def Main():
         elif ans == "Central Mode":
             #Waiting to recieve beacons
             start_new_thread(usr.central_mode, (s,))
+            start_new_thread(usr.remove_old_contacts, ())
         else:
             print("Sorry I didn't understand your command")
         
