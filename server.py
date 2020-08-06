@@ -1,6 +1,5 @@
 from socket import *
 from _thread import *
-import threading 
 import sys
 import random
 import string
@@ -127,6 +126,7 @@ def display_phone_numbers(phoneNums):
         print(f"{details[0]},")
         print(f"{details[1]},")
         print(f"{details[2]};")
+        print("")
 
 
 
@@ -134,11 +134,10 @@ def display_phone_numbers(phoneNums):
 def manage_client(c): 
     
     #client login
-    user = str(c.recv(1024).decode('ascii'))
-    passw = str(c.recv(1024).decode('ascii'))
+    #User/Password limited to 24 characters
+    user = str(c.recv(24).decode('ascii'))
+    passw = str(c.recv(24).decode('ascii'))
 
-    
-    
     
     wrong_pass_count = 0
     
@@ -165,15 +164,17 @@ def manage_client(c):
             c.send(msg.encode('ascii'))     
                 
             # data received from client 
-            passw = str(c.recv(1024).decode('ascii'))
+            passw = str(c.recv(24).decode('ascii'))
                 
-    ##User is logged in        
+    
+        
     msg = "1"
     c.send(msg.encode('ascii'))
     
+    #### Logged-In Phase ####    
     while True:
             
-        user_choice = str(c.recv(1024).decode('ascii'))
+        user_choice = str(c.recv(1).decode('ascii'))
         
         if user_choice == "0":
             return
@@ -181,7 +182,6 @@ def manage_client(c):
             tempID = generate_TempID(user)
             print("TempID:")
             print(tempID[0:20])
-            print(tempID)
             c.send(tempID.encode('ascii')) 
         elif user_choice == "2":
             contact_log = c.recv(1024).decode('ascii')

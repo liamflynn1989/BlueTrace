@@ -10,8 +10,6 @@ version_id = 1
 client_IP = '127.0.0.1'
 
 
-
-
 class User:
     def __init__(self,udp_port):
         self.id = None
@@ -105,7 +103,16 @@ class User:
         while True: 
             
             beacon = str(s.recv(21+21+21).decode('ascii')) 
-            self.add_to_contact_log(beacon)
+            
+            #extract start and end time from beacon
+            beacon_start = datetime.strptime(beacon[21:40],"%d/%m/%Y %H:%M:%S").timestamp()
+            beacon_end = datetime.strptime(beacon[41:60],"%d/%m/%Y %H:%M:%S").timestamp()
+            now = datetime.now().timestamp()
+            
+            #If beacon is valid, add to contact log
+            if now > beacon_start and now < beacon_end:
+            
+                self.add_to_contact_log(beacon)
 
             
     def add_to_contact_log(self,beacon):
@@ -125,6 +132,8 @@ class User:
             print(' '.join([tempID,tempID_start,tempID_exp]))
             file_object.write(' '.join([tempID,tempID_start,tempID_exp]))
         
+    ## This runs at 3 minute intervals to remove
+    ## old beacons
     def remove_old_contacts(self):
         pass
         
