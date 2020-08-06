@@ -133,9 +133,12 @@ def display_phone_numbers(phoneNums):
 # thread function 
 def manage_client(c): 
     
-    # data received from client 
+    #client login
     user = str(c.recv(1024).decode('ascii'))
     passw = str(c.recv(1024).decode('ascii'))
+
+    
+    
     
     wrong_pass_count = 0
     
@@ -169,10 +172,10 @@ def manage_client(c):
     c.send(msg.encode('ascii'))
     
     while True:
-        
+            
         user_choice = str(c.recv(1024).decode('ascii'))
         
-        if user_choice == 'logout':
+        if user_choice == "0":
             return
         elif user_choice == "1":
             tempID = generate_TempID(user)
@@ -183,7 +186,7 @@ def manage_client(c):
         elif user_choice == "2":
             contact_log = c.recv(1024).decode('ascii')
             phone_nums = recover_phone_numbers(contact_log)
-            display_phone_numbers(phoneNums)
+            display_phone_numbers(phone_nums)
 
   
     c.close() 
@@ -219,7 +222,7 @@ def Main():
   
     # put the socket into listening mode 
     s.listen(5) 
-    print("socket is listening") 
+    print("Server has started") 
   
     # a forever loop until client wants to exit 
     while True: 
@@ -227,7 +230,7 @@ def Main():
         # establish connection with client 
         c, addr = s.accept() 
         # lock acquired by client 
-        print('Connected to :', addr[0], ':', addr[1]) 
+        print(f"Connected to {addr[0]}:{addr[1]}") 
   
         # Start a new thread and return its identifier 
         start_new_thread(manage_client, (c,)) 

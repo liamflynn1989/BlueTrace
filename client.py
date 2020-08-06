@@ -198,7 +198,8 @@ def Main():
         ans = input('Type your choice: ') 
         if ans == 'logout':
             print("Logging Out")
-            s.send(ans.encode('ascii')) 
+            logout_msg = "0"
+            s.send(logout_msg.encode('ascii')) 
             return
         elif ans == "Download_tempID":
             print()
