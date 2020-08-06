@@ -53,19 +53,20 @@ def generate_TempID(user):
         exp_time = datetime.strptime(' '.join(tempIDs[user][3:]),"%d/%m/%Y %H:%M:%S").timestamp()
         if datetime.now().timestamp() < exp_time:
             #Valid tempID exists
-            return ''.join(tempIDs[user])
+            print(''.join(tempIDs[user]))
+            return ' '.join(tempIDs[user])
     
     #Valid TempID does not exist, so we generate a new one
-    letters = string.digits
-    tempID = ''.join(random.choice(letters) for i in range(20))
+    digits = string.digits
+    tempID = ''.join(random.choice(digits) for i in range(20))
     now = datetime.now()
     now_str = now.strftime("%d/%m/%Y %H:%M:%S")
     exp_str = (now + timedelta(minutes=15)).strftime("%d/%m/%Y %H:%M:%S")
     #Add new tempID to database
     write_tempID_to_DB(user,tempID,now_str,exp_str)
 
-    
-    return ''.join([tempID,now_str,exp_str])
+    print(''.join([tempID,now_str,exp_str]))
+    return ' '.join([tempID,now_str,exp_str])
 
  
 #Block User after 3 attempts
@@ -103,16 +104,17 @@ def manage_client(c):
     blocked = get_blocked()
     
     if user in blocked and int(blocked[user]) > int(datetime.now().timestamp()):
-        msg = "Your account is blocked due to multiple login failures. Please try again later"
+        msg = "3"
         c.send(msg.encode('ascii')) 
+        return
     
     while user not in credentials.keys() or credentials[user] != passw:
-        msg = "Invalid Password. Please try again"
+        msg = "0"
         wrong_pass_count += 1
         
         if wrong_pass_count >= 3:
             block(user)
-            msg = "Invalid Password. Your account has been blocked. Please try again later"
+            msg = "2"
             c.send(msg.encode('ascii'))  
             c.close()
             return 
@@ -125,7 +127,7 @@ def manage_client(c):
             passw = str(c.recv(1024).decode('ascii'))
                 
     ##User is logged in        
-    msg = "Success"
+    msg = "1"
     c.send(msg.encode('ascii'))
     
     while True:
@@ -134,10 +136,11 @@ def manage_client(c):
         
         if user_choice == 'logout':
             return
-        elif user_choice == "Download_tempID":
+        elif user_choice == "1":
             tempID = generate_TempID(user)
             print("TempID:")
             print(tempID[0:20])
+            print(tempID)
             c.send(tempID.encode('ascii')) 
         elif user_choice == "Upload_contact_log":
             ans = 'okay'
