@@ -11,6 +11,7 @@ import os
 
 #server_port, block_duration = int(sys.argv[1]),int(sys.argv[2])
 server_port, block_duration = 12345,60
+server_IP = '127.0.0.1'
 
 
 #Read credentials.txt
@@ -92,6 +93,43 @@ def get_blocked():
     return blocked    
 
 
+## Recover phone numbers to contact from tempIDs
+def recover_phone_numbers(contact_log):
+
+    contacts = set()
+    for line in contact_log.splitlines():
+        tempID = line.split(" ")[0]
+        contacts.add(tempID)
+ 
+        
+    tempIDs = get_tempIDs()
+    inv_IDs = {v[0]: [k,v[1],v[2]] for k, v in tempIDs.items()}
+    
+    phoneNums = []
+    
+    for contact in contacts:
+        
+        try:
+            phoneNum = inv_IDs[contact]
+            phoneNums.append(phoneNum+[contact])
+        except:
+            print(f"Could not find Phone Number for {contact}")
+        
+    return phoneNums
+
+#Print contact details to the Server Terminal
+def display_phone_numbers(phoneNums):
+    if(len(phoneNums)==0):
+        print("No contacts to contact")
+        return
+    
+    for details in phoneNums:
+        print(f"{details[0]},")
+        print(f"{details[1]},")
+        print(f"{details[2]};")
+
+
+
 # thread function 
 def manage_client(c): 
     
@@ -142,9 +180,10 @@ def manage_client(c):
             print(tempID[0:20])
             print(tempID)
             c.send(tempID.encode('ascii')) 
-        elif user_choice == "Upload_contact_log":
-            ans = 'okay'
-            c.send(ans.encode('ascii')) 
+        elif user_choice == "2":
+            contact_log = c.recv(1024).decode('ascii')
+            phone_nums = recover_phone_numbers(contact_log)
+            display_phone_numbers(phoneNums)
 
   
     c.close() 
@@ -173,9 +212,9 @@ def long_receive(self):
 #-------------------------------------------------------------------
   
 def Main(): 
-    host = "" 
+
     s = socket(AF_INET,SOCK_STREAM) 
-    s.bind((host, server_port)) 
+    s.bind((server_IP, server_port)) 
     print("socket binded to port", server_port) 
   
     # put the socket into listening mode 

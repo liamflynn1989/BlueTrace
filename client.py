@@ -7,20 +7,8 @@ from datetime import datetime,timedelta
 
 #BlueTrace Protocol Version
 version_id = 1
+client_IP = '127.0.0.1'
 
-# def try_login(s):
-
-#     msg = input("Username: ")
-#     #username sent to server 
-#     s.send(msg.encode('ascii')) 
-    
-#     msg = input("Password: ")
-#     #password sent to server 
-#     s.send(msg.encode('ascii')) 
-    
-#     data = s.recv(1) 
-
-#     return str(data.decode('ascii'))
 
 
 
@@ -78,24 +66,22 @@ class User:
         else:
             #If tempID not valid, ask server for new one
             self.retrieve_tempID(s)
-        
-        
+            
 
-    
-
-    def periphery_mode(self,s):
+    def peripheral_mode(self,s):
     
 
         clientSocket = socket(AF_INET, SOCK_DGRAM)
+        #Will get new tempID from server if current one has expired
         self.get_tempID(s)
-        message = self.tempID
+        message = ' '.join([self.tempID,self.tempID_start,self.tempID_end])
         
         #Broadcast Beacon every 5 seconds for 1 minute
         print()
-        print("Sending Beacons every 5 seconds for 1 minute")
-        for i in range(12):
-            clientSocket.sendto(message.encode(),('localhost', self.udp_port))
-            time.sleep(5)
+        print("Sending Beacons in the background every 15 seconds for 1 minute")
+        for i in range(4):
+            clientSocket.sendto(message.encode(),(client_IP, self.udp_port))
+            time.sleep(15)
             
         # Close the socket
         clientSocket.close()
@@ -104,27 +90,65 @@ class User:
     def central_mode(self,s):
     
         s = socket(AF_INET,SOCK_DGRAM) 
-        s.bind(('localhost', self.udp_port)) 
+        s.bind((client_IP, self.udp_port)) 
+        
+        
+        #Erase contact log
+        contact_log = "z5244712_contactlog.txt"
+        file = open(contact_log,"w")
+        file.close()
 
         print()
-        print("Now listening for beacons")
+        print("Now listening for beacons in the background")
           
         # a forever loop until client wants to exit 
         while True: 
             
-            data = s.recv(1024) 
-            print(str(data.decode('ascii')))
-            ans = input("Do you want to keep listening for beacons? (y/n)")
-            
-            if ans == 'n':
-                s.close()
-                return
+            beacon = str(s.recv(21+21+21).decode('ascii')) 
+            self.add_to_contact_log(beacon)
 
+            
+    def add_to_contact_log(self,beacon):
+        contact_log = "z5244712_contactlog.txt"
+        tempID = beacon[0:20]
+        tempID_start = beacon[21:40]
+        tempID_exp = beacon[41:60]
+        
+        with open(contact_log, 'a+') as file_object:
+            # Move read cursor to the start of file.
+            file_object.seek(0)
+            # If file is not empty then append '\n'
+            data = file_object.read(100)
+            if len(data) > 0 :
+                file_object.write("\n")
+            print()
+            print(' '.join([tempID,tempID_start,tempID_exp]))
+            file_object.write(' '.join([tempID,tempID_start,tempID_exp]))
+        
+    def remove_old_contacts(self):
+        pass
+        
+    def upload_contact_log(self,s):
+        msg = '2'
+        s.send(msg.encode('ascii')) 
+        
+        contact_log = "z5244712_contactlog.txt"
+        with open(contact_log, 'r') as file_object:
+            data = file_object.read()
+            s.send(data.encode('ascii')) 
+            print(data)
     
 
 
 def Main(): 
-    # local host IP '127.0.0.1' 
+
+    if len(sys.argv)!=4:
+        print("3 Command line arguments are required")
+        print("Expected usage:")
+        print("python client.py server_IP server_port client_udp_port")
+        return 
+    
+    
     server_IP, server_port, client_udp_port = sys.argv[1],int(sys.argv[2]),int(sys.argv[3])
 
   
@@ -182,21 +206,20 @@ def Main():
             print(usr.tempID)
         elif ans == "Upload_contact_log":
             print("Uploading Contact Log")
-            s.send(ans.encode('ascii'))
+            usr.upload_contact_log(s)
         elif ans == "Peripheral Mode":
             #Send Beacons via UDP
-            start_new_thread(usr.periphery_mode, (s,))
-            time.sleep(1)
+            start_new_thread(usr.peripheral_mode, (s,))
             
         elif ans == "Central Mode":
             #Waiting to recieve beacons
-            usr.central_mode(s)
+            start_new_thread(usr.central_mode, (s,))
         else:
             print("Sorry I didn't understand your command")
         
         print()
         print()
-        unused = input("Press enter to return to main menu")
+        _ = input("Press enter to return to main menu")
         
         
 
