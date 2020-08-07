@@ -20,36 +20,78 @@ class User:
         self.tempID_end = "01/01/2000 00:00:00"
         
         
+    def send_msg(self,s,payload):
+        #Send Message to Server
+        if len(payload)>1024:
+            header = str(len(payload))
+        else:
+            header = '0'
+            msg = f'{header}|{str(payload)}'
+            s.send(msg.encode('ascii'))
+            return
+            
+        #Long messages are sent in chunks of 1024 characters
+        charSent = 0
+        msg = f'{header}|{str(payload)}'
+        i = 0
+        while charSent < (len(payload)+len(header)):
+            print(i)
+            cap = min(charSent+1024,len(payload)+len(header))
+            chunk = msg[charSent:cap]
+            
+            sent = s.send(chunk.encode('ascii'))
+            if sent == 0:
+                raise RuntimeError("Connection Broken")
+            charSent = charSent + sent
+            i += 1
+            
+        
+    def recv_msg(self,s,limit=1024):
+        #limit is the character limit of the message
+        #default is 1024 characters, add 7 chars for header
+        msg = str(s.recv(limit+7).decode('ascii'))
+        header,payload = msg.split('|')
+        if header == '0':
+            return payload
+        
+        #receiving long message in chunks of 1024 chars
+        msg_len = int(header)
+        
+        while len(payload) < msg_len:
+            payload += str(c.recv(limit).decode('ascii'))
+        
+        return payload
+    
+
         
     def try_login(self,s):
 
         user_id = input("Username: ")
-        #username sent to server 
-        s.send(user_id.encode('ascii'))
+        #username sent to server
+        self.send_msg(s,payload=user_id)
         self.id = user_id
         
         passw = input("Password: ")
         #password sent to server 
-        s.send(passw.encode('ascii')) 
+        self.send_msg(s,payload=passw)
         
-        resp = s.recv(1) 
-        return str(resp.decode('ascii'))
+        resp = self.recv_msg(s,1)
+        return resp
   
     def retry_login(self,s):
     
-        msg = input("Password: ")
-        #password sent to server 
-        s.send(msg.encode('ascii')) 
+        passw = input("Password: ")
+        #password sent to server  
+        self.send_msg(s,payload=passw)
         
-        resp = s.recv(1) 
-        return str(resp.decode('ascii'))
+        resp = self.recv_msg(s,1) 
+        return resp
     
     def retrieve_tempID(self,s):
         #Option 1
         msg = '1'
-        s.send(msg.encode('ascii')) 
-        data = s.recv(21+21+21)
-        tempID = str(data.decode('ascii'))
+        self.send_msg(s,payload=msg)
+        tempID = self.recv_msg(s,21+21+21)
         self.tempID = tempID[0:20]
         self.tempID_start = tempID[21:40]
         self.tempID_end = tempID[41:60]
@@ -68,18 +110,14 @@ class User:
 
     def peripheral_mode(self,s):
     
-
         clientSocket = socket(AF_INET, SOCK_DGRAM)
         #Will get new tempID from server if current one has expired
         self.get_tempID(s)
         message = ' '.join([self.tempID,self.tempID_start,self.tempID_end])
         
-        #Broadcast Beacon every 5 seconds for 1 minute
         print()
-        print("Sending Beacons in the background every 15 seconds for 1 minute")
-        for i in range(4):
-            clientSocket.sendto(message.encode(),(client_IP, self.udp_port))
-            time.sleep(15)
+        print("Sending Beacon")
+        clientSocket.sendto(message.encode(),(client_IP, self.udp_port))
             
         # Close the socket
         clientSocket.close()
@@ -89,7 +127,6 @@ class User:
     
         s = socket(AF_INET,SOCK_DGRAM) 
         s.bind((client_IP, self.udp_port)) 
-        
         
         #Erase contact log
         contact_log = "z5244712_contactlog.txt"
@@ -102,7 +139,7 @@ class User:
         # a forever loop until client wants to exit 
         while True: 
             
-            beacon = str(s.recv(21+21+21).decode('ascii')) 
+            beacon = str(s.recv(21+21+21+1).decode('ascii'))
             
             #extract start and end time from beacon
             beacon_start = datetime.strptime(beacon[21:40],"%d/%m/%Y %H:%M:%S").timestamp()
@@ -162,12 +199,13 @@ class User:
         
     def upload_contact_log(self,s):
         msg = '2'
-        s.send(msg.encode('ascii')) 
+        #s.send(msg.encode('ascii'))
+        self.send_msg(s,payload=msg)
         
         contact_log = "z5244712_contactlog.txt"
         with open(contact_log, 'r') as file_object:
             data = file_object.read()
-            s.send(data.encode('ascii')) 
+            self.send_msg(s,payload=data)
             print(data)
     
 
@@ -230,8 +268,8 @@ def Main():
         ans = input('Type your choice: ') 
         if ans == 'logout':
             print("Logging Out")
-            logout_msg = "0"
-            s.send(logout_msg.encode('ascii')) 
+            msg = "0"
+            usr.send_msg(s,payload=msg)
             return
         elif ans == "Download_tempID":
             print()

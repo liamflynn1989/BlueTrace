@@ -8,8 +8,8 @@ import os
   
 
 
-#server_port, block_duration = int(sys.argv[1]),int(sys.argv[2])
-server_port, block_duration = 12345,60
+server_port, block_duration = int(sys.argv[1]),int(sys.argv[2])
+#server_port, block_duration = 12345,60
 server_IP = '127.0.0.1'
 
 
@@ -102,7 +102,7 @@ def recover_phone_numbers(contact_log):
  
         
     tempIDs = get_tempIDs()
-    inv_IDs = {v[0]: [k,v[1],v[2]] for k, v in tempIDs.items()}
+    inv_IDs = {v[0]: [k,' '.join([v[1],v[2]])] for k, v in tempIDs.items()}
     
     phoneNums = []
     
@@ -122,11 +122,57 @@ def display_phone_numbers(phoneNums):
         print("No contacts to contact")
         return
     
+    print("Contact Tracing Log:")
     for details in phoneNums:
         print(f"{details[0]},")
         print(f"{details[1]},")
         print(f"{details[2]};")
         print("")
+
+
+#Send message to client c
+def send_msg(c,payload):
+    #Send Message to Server
+    if len(payload)>1024:
+        header = str(len(payload))
+    else:
+        header = '0'
+        msg = f'{header}|{str(payload)}'
+        c.send(msg.encode('ascii'))
+        return
+        
+    #Long messages are sent in chunks of 1024 characters
+    charSent = 0
+    msg = f'{header}|{str(payload)}'
+    
+    while charSent < (len(payload)+len(header)):
+        cap = min(charSent+1024,len(payload)+len(header))
+        chunk = msg[charSent:cap]
+        
+        sent = c.send(chunk.encode('ascii'))
+        if sent == 0:
+            raise RuntimeError("Connection Broken")
+        charSent = charSent + sent
+
+
+
+
+#Recieve message from client c
+def recv_msg(c,limit=1024):
+    #limit is the character limit of the message
+    #default is 1024 characters,allow some space for header
+    msg = str(c.recv(limit+7).decode('ascii'))
+    header,payload = msg.split('|')
+    if header == '0':
+        return payload
+    
+    #receiving long message in chunks of 1024 chars
+    msg_len = int(header)
+    while len(payload) < (msg_len-len(header)):
+        payload += str(c.recv(limit).decode('ascii'))
+    return payload
+        
+    
 
 
 
@@ -135,8 +181,8 @@ def manage_client(c):
     
     #client login
     #User/Password limited to 24 characters
-    user = str(c.recv(24).decode('ascii'))
-    passw = str(c.recv(24).decode('ascii'))
+    user = recv_msg(c,24)
+    passw = recv_msg(c,24)
 
     
     wrong_pass_count = 0
@@ -145,7 +191,7 @@ def manage_client(c):
     
     if user in blocked and int(blocked[user]) > int(datetime.now().timestamp()):
         msg = "3"
-        c.send(msg.encode('ascii')) 
+        send_msg(c,payload=msg)
         return
     
     while user not in credentials.keys() or credentials[user] != passw:
@@ -155,26 +201,26 @@ def manage_client(c):
         if wrong_pass_count >= 3:
             block(user)
             msg = "2"
-            c.send(msg.encode('ascii'))  
+            send_msg(c,payload=msg)
             c.close()
             return 
             
         else:
             
-            c.send(msg.encode('ascii'))     
+            send_msg(c,payload=msg)   
                 
             # data received from client 
-            passw = str(c.recv(24).decode('ascii'))
+            passw = recv_msg(c,24)
                 
     
         
     msg = "1"
-    c.send(msg.encode('ascii'))
+    send_msg(c,payload=msg)
     
     #### Logged-In Phase ####    
     while True:
             
-        user_choice = str(c.recv(1).decode('ascii'))
+        user_choice = recv_msg(c,1)
         
         if user_choice == "0":
             return
@@ -182,37 +228,17 @@ def manage_client(c):
             tempID = generate_TempID(user)
             print("TempID:")
             print(tempID[0:20])
-            c.send(tempID.encode('ascii')) 
+            send_msg(c,payload=tempID)
         elif user_choice == "2":
-            contact_log = c.recv(1024).decode('ascii')
+            contact_log = recv_msg(c)
+            print(len(contact_log))
             phone_nums = recover_phone_numbers(contact_log)
             display_phone_numbers(phone_nums)
 
   
     c.close() 
    
-#-------------------------------------------------------------------
 
-def long_send(msg):
-    totalsent = 0
-    while totalsent < MSGLEN:
-        sent = self.sock.send(msg[totalsent:])
-        if sent == 0:
-            raise RuntimeError("socket connection broken")
-        totalsent = totalsent + sent
-
-def long_receive(self):
-    chunks = []
-    bytes_recd = 0
-    while bytes_recd < MSGLEN:
-        chunk = self.sock.recv(min(MSGLEN - bytes_recd, 2048))
-        if chunk == b'':
-            raise RuntimeError("socket connection broken")
-        chunks.append(chunk)
-        bytes_recd = bytes_recd + len(chunk)
-    return b''.join(chunks)
-  
-#-------------------------------------------------------------------
   
 def Main(): 
 
@@ -229,7 +255,6 @@ def Main():
   
         # establish connection with client 
         c, addr = s.accept() 
-        # lock acquired by client 
         print(f"Connected to {addr[0]}:{addr[1]}") 
   
         # Start a new thread and return its identifier 
