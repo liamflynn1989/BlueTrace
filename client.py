@@ -7,7 +7,7 @@ from datetime import datetime,timedelta
 
 #BlueTrace Protocol Version
 version_id = 1
-client_IP = '127.0.0.1'
+client_IP = "127.0.0.1"
 
 
 class User:
@@ -25,14 +25,14 @@ class User:
         if len(payload)>1024:
             header = str(len(payload))
         else:
-            header = '0'
-            msg = f'{header}|{str(payload)}'
+            header = "0"
+            msg = f"{header}|{str(payload)}"
             s.send(msg.encode('ascii'))
             return
             
         #Long messages are sent in chunks of 1024 characters
         charSent = 0
-        msg = f'{header}|{str(payload)}'
+        msg = f"{header}|{str(payload)}"
         i = 0
         while charSent < (len(payload)+len(header)):
             print(i)
@@ -51,7 +51,7 @@ class User:
         #default is 1024 characters, add 7 chars for header
         msg = str(s.recv(limit+7).decode('ascii'))
         header,payload = msg.split('|')
-        if header == '0':
+        if header == "0":
             return payload
         
         #receiving long message in chunks of 1024 chars
@@ -89,7 +89,7 @@ class User:
     
     def retrieve_tempID(self,s):
         #Option 1
-        msg = '1'
+        msg = "1"
         self.send_msg(s,payload=msg)
         tempID = self.recv_msg(s,21+21+21)
         self.tempID = tempID[0:20]
@@ -198,7 +198,7 @@ class User:
                 f.truncate()
         
     def upload_contact_log(self,s):
-        msg = '2'
+        msg = "2"
         #s.send(msg.encode('ascii'))
         self.send_msg(s,payload=msg)
         
@@ -247,8 +247,8 @@ def Main():
         return 
         
     #Client has successfully logged in    
-    print('Welcome to the BlueTrace Simulator!')
-    ans = ''
+    print("Welcome to the BlueTrace Simulator!")
+    ans = ""
     while ans != "logout":
         # ask the client what they would like to do
         print("Your Options are:")
@@ -265,7 +265,7 @@ def Main():
         print("  logout")
         print("")
         
-        ans = input('Type your choice: ') 
+        ans = input("Type your choice: ") 
         if ans == 'logout':
             print("Logging Out")
             msg = "0"
@@ -296,5 +296,5 @@ def Main():
         
 
 
-if __name__ == '__main__': 
+if __name__ == "__main__": 
     Main() 

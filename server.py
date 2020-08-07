@@ -10,7 +10,7 @@ import os
 
 server_port, block_duration = int(sys.argv[1]),int(sys.argv[2])
 #server_port, block_duration = 12345,60
-server_IP = '127.0.0.1'
+server_IP = "127.0.0.1"
 
 
 #Read credentials.txt
@@ -137,13 +137,13 @@ def send_msg(c,payload):
         header = str(len(payload))
     else:
         header = '0'
-        msg = f'{header}|{str(payload)}'
+        msg = f"{header}|{str(payload)}"
         c.send(msg.encode('ascii'))
         return
         
     #Long messages are sent in chunks of 1024 characters
     charSent = 0
-    msg = f'{header}|{str(payload)}'
+    msg = f"{header}|{str(payload)}"
     
     while charSent < (len(payload)+len(header)):
         cap = min(charSent+1024,len(payload)+len(header))
@@ -163,7 +163,7 @@ def recv_msg(c,limit=1024):
     #default is 1024 characters,allow some space for header
     msg = str(c.recv(limit+7).decode('ascii'))
     header,payload = msg.split('|')
-    if header == '0':
+    if header == "0":
         return payload
     
     #receiving long message in chunks of 1024 chars
@@ -262,5 +262,5 @@ def Main():
     s.close() 
   
   
-if __name__ == '__main__': 
+if __name__ == "__main__": 
     Main() 
